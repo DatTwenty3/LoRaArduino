@@ -2,8 +2,14 @@
 #define RX 6
 #define TX 7
 SoftwareSerial loraSerial(RX, TX); // RX, TX
+//Sensor
+#include "DHT.h"
+#define DHTPIN 2
+#define DHTTYPE DHT22 
+DHT dht(DHTPIN, DHTTYPE);
+//TIMER
+long clkTime = 0;
 
-int i = 0;
 int relayDV1 = 8;
 int relayDV2 = 9;
 
@@ -12,6 +18,13 @@ void setup() {
   loraSerial.begin(9600);
   pinMode(relayDV1, OUTPUT);
   pinMode(relayDV2, OUTPUT);
+
+  //OFF ALL
+  digitalWrite(relayDV1, HIGH);
+  digitalWrite(relayDV2, HIGH);
+
+  //SENSOR
+  dht.begin();
 }
 void loop() {
   if(loraSerial.available()>0){
@@ -43,4 +56,28 @@ void loop() {
       digitalWrite(relayDV2, HIGH);
     }
   }
+
+  //SENSOR
+  if(millis() - clkTime > 10000){
+    clkTime = millis();
+    
+    int h = dht.readHumidity();
+    int t = dht.readTemperature();
+
+    loraSerial.print(h*100 + t);
+    
+    if (isnan(h) || isnan(t)) {
+      Serial.println("Failed to read from DHT sensor!");
+      return;
+    }
+    
+    Serial.print("Humidity: ");
+    Serial.print(h);
+    Serial.print(" %\t");
+    Serial.print("Temperature: ");
+    Serial.print(t);
+    Serial.print(" *C ");
+    Serial.println();
+  }
+  
 }
