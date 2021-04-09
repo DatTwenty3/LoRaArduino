@@ -2,7 +2,7 @@
 #define RX 6
 #define TX 7
 SoftwareSerial loraSerial(RX, TX); // RX, TX
-//Sensor
+//Sensor Temp & Air Humi
 #include "DHT.h"
 #define DHTPIN 10
 #define DHTTYPE DHT22 
@@ -13,7 +13,9 @@ long clkTime = 0;
 #include <ModbusMaster.h>   //Modbus Lib
 #define DE  3 // DE -> 3
 #define RE  2 // RE -> 2
-ModbusMaster node;   
+ModbusMaster node;
+//Sensor Soil Moisture
+#define SensorSoilMois A0    
 
 //RELAY
 int relayDV1 = 8;
@@ -88,13 +90,20 @@ void loop() {
   //SENSOR
   if(millis() - clkTime > 10000){
     clkTime = millis();
-    
+
+    //Sensor Temp & Air Humidity
     int h = dht.readHumidity();
     node.writeSingleRegister(0x40000,h); //SAVE HUMIDITY TO REGISTER 0x40000H
     int t = dht.readTemperature();
     node.writeSingleRegister(0x40001,t); //SAVE TEMPERATURE TO REGISTER 0x40001H
-
-    loraSerial.print(h*100 + t);
+    //Sensor Soil Moisture
+    int soilMois = analogRead(SensorSoilMois);
+    int percentSoilMois = map(soilMois, 0, 1023, 100, 0);
+    node.writeSingleRegister(0x40002,percentSoilMois); //SAVE SOIL MOISTURE TO REGISTER 0x40002H
+    
+    //Send LoRa
+    long int dataToLoRa =h*1000000 + t*1000 + percentSoilMois;
+    loraSerial.print(dataToLoRa);
     
     if (isnan(h) || isnan(t)) {
       Serial.println("Failed to read from DHT sensor!");
@@ -106,7 +115,11 @@ void loop() {
     Serial.print(" %\t");
     Serial.print("Temperature: ");
     Serial.print(t);
-    Serial.print(" *C ");
+    Serial.print(" *C\t");
+    Serial.print("Soil Moisture: ");
+    Serial.print(percentSoilMois);
+    Serial.print(" %");
+    Serial.print(dataToLoRa);
     Serial.println();
   }
   
