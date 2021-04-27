@@ -16,21 +16,10 @@ long clkTime = 0;
 ModbusMaster node;
 //Sensor Soil Moisture
 #define SensorSoilMois A0
-//AS Sensor
-#define rxSensor 12
-#define txSensor 11
-SoftwareSerial sensorSerial(rxSensor, txSensor);
-int Pin_x = 4;
-int Pin_y = 5;
-char computerdata[20];
-char sensordata[30];
-byte computer_bytes_received=0;
-byte sensor_bytes_received=0;
-char *cmd;
-int counterSensorAS;
-float dataToFloat;
-int pH;
-int ORP;
+
+//RELAY
+int relayDV1 = 8;
+int relayDV2 = 9;
 
 //FUNCTION MODBUS
 void preTransmission(){
@@ -42,17 +31,17 @@ void postTransmission(){
   digitalWrite(DE, 0);
 }
 
-//FUNCTION AS SENSOR
-void serialEvent(){                                                 
-  sensor_bytes_received=sensorSerial.readBytesUntil(13,sensordata,30); 
-  sensordata[sensor_bytes_received]=0;
-}
-
 void setup() {
   Serial.begin(9600);
   loraSerial.begin(9600);
+  pinMode(relayDV1, OUTPUT);
+  pinMode(relayDV2, OUTPUT);
 
-  //SENSOR DHT22
+  //OFF ALL
+  digitalWrite(relayDV1, HIGH);
+  digitalWrite(relayDV2, HIGH);
+
+  //SENSOR
   dht.begin();
   
   //RS485 SETUP
@@ -64,13 +53,37 @@ void setup() {
   node.preTransmission(preTransmission);  
   node.postTransmission(postTransmission);
   
-  //AS SENSOR SERIAL SETUP
-  pinMode(Pin_x, OUTPUT);
-  pinMode(Pin_y, OUTPUT);
-  sensorSerial.begin(9600); 
-  
 }
 void loop() {
+  if(loraSerial.available()>0){
+    String dataFromSender = loraSerial.readString();
+    
+    //SO SANH DU LIEU TU SENDER THUC HIEN LENH
+    if(dataFromSender.indexOf("DV1On") > 0){
+      loraSerial.print("SttDV1ON");
+      Serial.println("DEVICE 1 IS ON!");
+      //RELAYDV1 CONTROL ON
+      digitalWrite(relayDV1, LOW);
+    }
+    else if (dataFromSender.indexOf("DV1Off") > 0){
+      loraSerial.print("SttDV1OFF");
+      Serial.println("DEVICE 1 IS OFF!");
+      //RELAYDV1 CONTROL OFF
+      digitalWrite(relayDV1, HIGH);
+    }
+    else if (dataFromSender.indexOf("DV2On") > 0){
+      loraSerial.print("SttDV2ON");
+      Serial.println("DEVICE 2 IS ON!");
+      //RELAYDV2 CONTROL ON
+      digitalWrite(relayDV2, LOW);
+    }
+    else if (dataFromSender.indexOf("DV2Off") > 0){
+      loraSerial.print("SttDV2OFF");
+      Serial.println("DEVICE 2 IS OFF!");
+      //RELAYDV2 CONTROL OFF
+      digitalWrite(relayDV2, HIGH);
+    }
+  }
 
   //SENSOR
   if(millis() - clkTime > 30000){
@@ -91,13 +104,6 @@ void loop() {
     node.writeSingleRegister(0x40002,percentSoilMois); //SAVE SOIL MOISTURE TO REGISTER 0x40002H
     loraSerial.print(" SoilMois" + (String)percentSoilMois);
     delay(500);
-    //AS Sensor
-    node.writeSingleRegister(0x40003,ORP);
-    loraSerial.print(" ORP" + (String)ORP);
-    delay(500);
-    node.writeSingleRegister(0x40004,pH);
-    loraSerial.print(" pH" + (String)pH);
-    delay(500);
     
     if (isnan(h) || isnan(t)) {
       Serial.println("Failed to read from DHT sensor!");
@@ -114,65 +120,5 @@ void loop() {
     Serial.print(percentSoilMois);
     Serial.println(" %"); 
   }
-
-  //AS SENSOR
-    if(sensor_bytes_received!=0){
-    //channel=strtok(computerdata, ":");
-    cmd=strtok(NULL, ":");
-    if(counterSensorAS  == 0){
-      open_channel (1);
-      counterSensorAS = 1;
-      }
-    else{
-      open_channel (2);
-      counterSensorAS = 0;
-      }
-    if(cmd!=0){
-      sensorSerial.print(cmd);
-      sensorSerial.print("\r");
-      }
-      computer_bytes_received=0;
-    }
-  
-  if(sensorSerial.available() > 0){
-    sensor_bytes_received=sensorSerial.readBytesUntil(13,sensordata,30);
-    sensordata[sensor_bytes_received]=0;
-    dataToFloat = atof(sensordata);
-    if (dataToFloat >= 0 && dataToFloat <= 14){
-      pH = dataToFloat;
-      Serial.print("pH: ");
-      Serial.println(pH);
-      }
-    else {
-      ORP = dataToFloat;
-      Serial.print("ORP: ");
-      Serial.println(ORP);
-      }
-  } delay(1000);
   
 }
-
-//FUNCTION AS SENSOR
-void open_channel(int channel_function){                          
-     switch (channel_function) {                               
-       case 1:                                       
-         digitalWrite(Pin_x, LOW);                   
-         digitalWrite(Pin_y, LOW);                  
-       break;                                
-        
-       case 2:
-         digitalWrite(Pin_x, LOW);
-         digitalWrite(Pin_y, HIGH);
-       break;
-
-       case 3:
-         digitalWrite(Pin_x, HIGH);
-         digitalWrite(Pin_y, LOW);
-       break;
-
-       case 4:
-         digitalWrite(Pin_x, HIGH);
-         digitalWrite(Pin_y, HIGH);
-       break;
-      }
-}    
