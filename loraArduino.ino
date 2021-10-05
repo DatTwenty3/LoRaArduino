@@ -15,7 +15,7 @@ long clkTime = 0;
 #define RE  2 // RE -> 2
 ModbusMaster node;
 //Sensor Soil Moisture
-#define SensorSoilMois A0
+//#define SensorSoilMois A0
 
 //RELAY
 int relayDV1 = 8;
@@ -99,11 +99,11 @@ void loop() {
     loraSerial.print(" Temp" + (String)t);
     delay(500);
     //Sensor Soil Moisture
-    int soilMois = analogRead(SensorSoilMois);
-    int percentSoilMois = map(soilMois, 0, 1023, 100, 0);
-    node.writeSingleRegister(0x40002,percentSoilMois); //SAVE SOIL MOISTURE TO REGISTER 0x40002H
-    loraSerial.print(" SoilMois" + (String)percentSoilMois);
-    delay(500);
+    //int soilMois = analogRead(SensorSoilMois);
+    //int percentSoilMois = map(soilMois, 0, 1023, 100, 0);
+    //node.writeSingleRegister(0x40002,percentSoilMois); //SAVE SOIL MOISTURE TO REGISTER 0x40002H
+    //loraSerial.print(" SoilMois" + (String)percentSoilMois);
+    //delay(500);
     
     if (isnan(h) || isnan(t)) {
       Serial.println("Failed to read from DHT sensor!");
@@ -116,9 +116,9 @@ void loop() {
     Serial.print("Temperature: ");
     Serial.print(t);
     Serial.println(" *C");
-    Serial.print("Soil Moisture: ");
-    Serial.print(percentSoilMois);
-    Serial.println(" %"); 
+    //Serial.print("Soil Moisture: ");
+    //Serial.print(percentSoilMois);
+    //Serial.println(" %"); 
   }
   
 }
